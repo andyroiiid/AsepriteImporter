@@ -8,7 +8,8 @@ ScriptedImporter:
   assetBundleName: 
   assetBundleVariant: 
   script: {fileID: 11500000, guid: 9d0af69661606ff4ba7416e6ba6498f4, type: 3}
-  alphaIsTransparency: 1
-  filterMode: 0
-  wrapMode: 0
-  anisoLevel: 1
+  config:
+    alphaIsTransparency: 1
+    filterMode: 0
+    wrapMode: 0
+    anisoLevel: 1
