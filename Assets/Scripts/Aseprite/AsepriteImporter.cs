@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using UnityEditor.AssetImporters;
 using UnityEngine;
@@ -9,7 +8,36 @@ namespace Aseprite
     [ScriptedImporter(1, "aseprite")]
     public class AsepriteImporter : ScriptedImporter
     {
-        private static void ProcessChunk(AssetImportContext ctx, Chunk chunk)
+        [SerializeField] private bool alphaIsTransparency = true;
+        [SerializeField] private FilterMode filterMode = FilterMode.Point;
+        [SerializeField] private TextureWrapMode wrapMode = TextureWrapMode.Repeat;
+        [SerializeField] [Range(0, 16)] private int anisoLevel = 1;
+
+        private void CreateTextureAndSpriteFromCel(AssetImportContext ctx, int frameIdx, Cel cel)
+        {
+            var texture = new Texture2D(cel.Width, cel.Height)
+            {
+                name = $"Texture{frameIdx}-{cel.LayerIndex}",
+                alphaIsTransparency = alphaIsTransparency,
+                filterMode = filterMode,
+                wrapMode = wrapMode,
+                anisoLevel = anisoLevel
+            };
+            texture.SetPixels32(cel.Pixels);
+            texture.Apply();
+
+            var sprite = Sprite.Create(
+                texture,
+                new Rect(Vector2.zero, new Vector2(texture.width, texture.height)),
+                Vector2.zero
+            );
+            sprite.name = $"Sprite{frameIdx}-{cel.LayerIndex}";
+
+            ctx.AddObjectToAsset(texture.name, texture);
+            ctx.AddObjectToAsset(sprite.name, sprite);
+        }
+
+        private void ProcessChunk(AssetImportContext ctx, int frameIdx, Chunk chunk)
         {
             using var stream = new MemoryStream(chunk.Data);
             using var reader = new BinaryReader(stream);
@@ -18,10 +46,10 @@ namespace Aseprite
             {
                 case ChunkType.OldPalette8Bit:
                     Debug.LogError("Old palette format is not implemented.");
-                    break;
+                    return;
                 case ChunkType.OldPalette6Bit:
                     Debug.LogError("Old palette format is not implemented.");
-                    break;
+                    return;
                 case ChunkType.Layer:
                     var layer = new Layer(reader);
                     Debug.Log($"{layer}\n{layer.DebugFieldsToString()}");
@@ -29,8 +57,7 @@ namespace Aseprite
                 case ChunkType.Cel:
                     var cel = new Cel(reader);
                     Debug.Log($"{cel}\n{cel.DebugFieldsToString()}");
-                    ctx.AddObjectToAsset(cel.Texture.name, cel.Texture);
-                    ctx.AddObjectToAsset(cel.Sprite.name, cel.Sprite);
+                    CreateTextureAndSpriteFromCel(ctx, frameIdx, cel);
                     return;
                 case ChunkType.CelExtra:
                     break;
@@ -72,13 +99,15 @@ namespace Aseprite
             var header = new Header(reader);
             Debug.Log($"{header}\n{header.DebugFieldsToString()}");
 
-            // only read the first frame for now
-            var frame = new Frame(reader);
-            Debug.Log($"{frame}\n{frame.DebugFieldsToString()}");
-
-            for (var i = 0; i < frame.NumChunks; i++)
+            for (var iFrame = 0; iFrame < header.Frames; iFrame++)
             {
-                ProcessChunk(ctx, new Chunk(reader));
+                var frame = new Frame(reader);
+                Debug.Log($"{frame}\n{frame.DebugFieldsToString()}");
+
+                for (var iChunk = 0; iChunk < frame.NumChunks; iChunk++)
+                {
+                    ProcessChunk(ctx, iFrame, new Chunk(reader));
+                }
             }
 
             var texture = new Texture2D(128, 128);
