@@ -14,6 +14,8 @@ namespace Aseprite
         [SerializeField] private FilterMode filterMode = FilterMode.Point;
         [SerializeField] private TextureWrapMode wrapMode = TextureWrapMode.Repeat;
         [SerializeField] [Range(0, 16)] private int anisoLevel = 1;
+        [SerializeField] private Vector2 pivot = new(0.5f, 0.5f);
+        [SerializeField] private float pixelsPerUnit = 32.0f;
 
         private string _filename;
 
@@ -98,8 +100,9 @@ namespace Aseprite
             using var reader = new BinaryReader(stream);
 
             var header = new Header(reader);
-            Debug.Log($"{header}\n{header.DebugFieldsToString()}");
+            // Debug.Log($"{header}\n{header.DebugFieldsToString()}");
             var size = new Vector2Int(header.WidthInPixels, header.HeightInPixels);
+            var rect = new Rect(Vector2.zero, size);
 
             var textures = new List<Texture>();
             var sprites = new List<Sprite>();
@@ -109,7 +112,7 @@ namespace Aseprite
             for (var iFrame = 1; iFrame <= header.Frames; iFrame++)
             {
                 var frame = new Frame(reader);
-                Debug.Log($"{frame}\n{frame.DebugFieldsToString()}");
+                // Debug.Log($"{frame}\n{frame.DebugFieldsToString()}");
 
                 var chunks = new List<Chunk>();
                 for (var iChunk = 0; iChunk < frame.NumChunks; iChunk++)
@@ -126,7 +129,7 @@ namespace Aseprite
                 var texture = ImportFrame(size, iFrame, chunks, layers);
                 textures.Add(texture);
 
-                var sprite = Sprite.Create(texture, new Rect(Vector2.zero, size), Vector2.zero);
+                var sprite = Sprite.Create(texture, rect, pivot, pixelsPerUnit);
                 sprite.name = $"{_filename}_{iFrame}";
                 sprites.Add(sprite);
             }
