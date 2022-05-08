@@ -15,6 +15,8 @@ namespace Aseprite
         [SerializeField] private TextureWrapMode wrapMode = TextureWrapMode.Repeat;
         [SerializeField] [Range(0, 16)] private int anisoLevel = 1;
 
+        private string _filename;
+
         private Texture2D ImportFrame(Vector2Int size, int frameIndex, IEnumerable<Chunk> chunks)
         {
             var cels = new List<Cel>();
@@ -62,7 +64,7 @@ namespace Aseprite
 
             var texture = new Texture2D(size.x, size.y)
             {
-                name = $"texture_{frameIndex}",
+                name = $"{_filename}_{frameIndex}",
                 alphaIsTransparency = alphaIsTransparency,
                 filterMode = filterMode,
                 wrapMode = wrapMode,
@@ -75,7 +77,10 @@ namespace Aseprite
 
         public override void OnImportAsset(AssetImportContext ctx)
         {
-            using var stream = File.OpenRead(ctx.assetPath);
+            var path = ctx.assetPath;
+            _filename = Path.GetFileNameWithoutExtension(path);
+
+            using var stream = File.OpenRead(path);
             using var reader = new BinaryReader(stream);
 
             var header = new Header(reader);
@@ -100,18 +105,18 @@ namespace Aseprite
                 textures.Add(texture);
 
                 var sprite = Sprite.Create(texture, new Rect(Vector2.zero, size), Vector2.zero);
-                sprite.name = $"sprite_{iFrame}";
+                sprite.name = $"{_filename}_{iFrame}";
                 sprites.Add(sprite);
             }
 
             foreach (var texture in textures)
             {
-                ctx.AddObjectToAsset(texture.name, texture);
+                ctx.AddObjectToAsset($"{texture.name}_texture", texture);
             }
 
             foreach (var sprite in sprites)
             {
-                ctx.AddObjectToAsset(sprite.name, sprite);
+                ctx.AddObjectToAsset($"{sprite.name}_sprite", sprite);
             }
 
             ctx.SetMainObject(textures[0]);
