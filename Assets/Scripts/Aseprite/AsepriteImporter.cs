@@ -17,7 +17,7 @@ namespace Aseprite
 
         private string _filename;
 
-        private Texture2D ImportFrame(Vector2Int size, int frameIndex, IEnumerable<Chunk> chunks)
+        private Texture2D ImportFrame(Vector2Int size, int frameIndex, IEnumerable<Chunk> chunks, List<Layer> layers)
         {
             var cels = new List<Cel>();
 
@@ -25,7 +25,10 @@ namespace Aseprite
             {
                 using var stream = new MemoryStream(chunk.Data);
                 using var reader = new BinaryReader(stream);
-                cels.Add(new Cel(reader));
+                var cel = new Cel(reader);
+                // ignore invisible layers
+                if (!layers[cel.LayerIndex].Flags.HasFlag(LayerFlags.Visible)) continue;
+                cels.Add(cel);
             }
 
             cels.Sort((lhs, rhs) => lhs.LayerIndex - rhs.LayerIndex);
@@ -75,6 +78,17 @@ namespace Aseprite
             return texture;
         }
 
+        // ReSharper disable once SuggestBaseTypeForParameter
+        private static void LoadLayers(IEnumerable<Chunk> chunks, List<Layer> layers)
+        {
+            foreach (var chunk in chunks.Where(chunk => chunk.Type == ChunkType.Layer))
+            {
+                using var stream = new MemoryStream(chunk.Data);
+                using var reader = new BinaryReader(stream);
+                layers.Add(new Layer(reader));
+            }
+        }
+
         public override void OnImportAsset(AssetImportContext ctx)
         {
             var path = ctx.assetPath;
@@ -89,7 +103,9 @@ namespace Aseprite
 
             var textures = new List<Texture>();
             var sprites = new List<Sprite>();
+            var layers = new List<Layer>();
 
+            var firstFrame = true;
             for (var iFrame = 0; iFrame < header.Frames; iFrame++)
             {
                 var frame = new Frame(reader);
@@ -101,7 +117,13 @@ namespace Aseprite
                     chunks.Add(new Chunk(reader));
                 }
 
-                var texture = ImportFrame(size, iFrame, chunks);
+                if (firstFrame)
+                {
+                    LoadLayers(chunks, layers);
+                    firstFrame = false;
+                }
+
+                var texture = ImportFrame(size, iFrame, chunks, layers);
                 textures.Add(texture);
 
                 var sprite = Sprite.Create(texture, new Rect(Vector2.zero, size), Vector2.zero);
