@@ -106,7 +106,7 @@ namespace Aseprite
             var layers = new List<Layer>();
 
             var firstFrame = true;
-            for (var iFrame = 0; iFrame < header.Frames; iFrame++)
+            for (var iFrame = 1; iFrame <= header.Frames; iFrame++)
             {
                 var frame = new Frame(reader);
                 Debug.Log($"{frame}\n{frame.DebugFieldsToString()}");
