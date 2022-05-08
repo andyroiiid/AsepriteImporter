@@ -15,7 +15,7 @@ namespace Aseprite.Chunks
 
         public readonly ushort Width; // compressed image: pixels
         public readonly ushort Height; // compressed image: pixels
-        public readonly Color32[] Pixels;
+        public readonly Color[] Pixels;
 
         public Cel(BinaryReader reader)
         {
@@ -39,13 +39,12 @@ namespace Aseprite.Chunks
             var data = new byte[dataLength];
             Assert.AreEqual(stream.Read(data, 0, dataLength), dataLength);
 
-            Pixels = new Color32[Width * Height];
+            Pixels = new Color[Width * Height];
             for (var y = 0; y < Height; y++)
             {
                 for (var x = 0; x < Width; x++)
                 {
-                    // flip vertically
-                    var pixelOffset = x + (Height - y - 1) * Width;
+                    var pixelOffset = x + y * Width;
                     var dataOffset = 4 * (x + y * Width);
                     Pixels[pixelOffset] = new Color32(
                         data[dataOffset],
